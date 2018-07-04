@@ -24,9 +24,7 @@ func getClient() *Client {
 
 func RunWithSchema(t *testing.T, test func(client *Client, t *testing.T)) {
 	client := getClient()
-	defer func() {
-		client.Delete("test", "test")
-	}()
+	defer client.Delete("test", "test")
 
 	_, err := client.Publish("test", "test", "test")
 
