@@ -2,9 +2,9 @@ package goacm
 
 import (
 	"testing"
-	"fmt"
 	"log"
 	"os"
+	"fmt"
 )
 
 func getClient() *Client {
@@ -22,6 +22,21 @@ func getClient() *Client {
 	return client
 }
 
+func RunWithSchema(t *testing.T, test func(client *Client, t *testing.T)) {
+	client := getClient()
+	defer func() {
+		client.Delete("test", "test")
+	}()
+
+	_, err := client.Publish("test", "test", "test")
+
+	if err != nil {
+		t.Fatalf("pulish error:%s", err)
+	}
+
+	test(client, t)
+}
+
 func TestNewClient(t *testing.T) {
 	client := getClient()
 	servers := client.GetServers()
@@ -29,28 +44,23 @@ func TestNewClient(t *testing.T) {
 	if len(servers) == 0 {
 		t.Error("get server error")
 	}
-
-	fmt.Println(servers)
 }
 
 func TestClient_GetConfig(t *testing.T) {
-	client := getClient()
-	ret, err := client.GetConfig("php-test", "payment")
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	fmt.Println(ret)
+	RunWithSchema(t, func(client *Client, t *testing.T) {
+		ret, err := client.GetConfig("test", "test")
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println(ret)
+	})
 }
 
 func TestClient_Subscribe(t *testing.T) {
-	client := getClient()
-	ret, err := client.Subscribe("php-test", "payment", "")
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	fmt.Println(ret)
+	RunWithSchema(t, func(client *Client, t *testing.T) {
+		_, err := client.Subscribe("test", "test","")
+		if err != nil {
+			t.Error(err)
+		}
+	})
 }

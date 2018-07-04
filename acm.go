@@ -113,7 +113,6 @@ func (c *Client) callApi(api string, params map[string]string, method string) (s
 	}
 
 	if method == "GET" {
-		query.Add("tenant", c.NameSpace)
 		u := fmt.Sprintf("http://%s/%s%s%s", server, api, spec, query.Encode())
 		request, err = http.NewRequest(method, u, nil)
 	} else {
@@ -149,12 +148,16 @@ func (c *Client) callApi(api string, params map[string]string, method string) (s
 		return "", err
 	}
 
+	byt, err = GbkToUtf8(byt)
+	if err != nil {
+		return "", err
+	}
+
 	body := string(byt)
 
 	if resp.StatusCode != 200 {
 		return "", errors.New("response error:" + body)
 	}
-
 	return body, nil
 }
 
@@ -164,6 +167,7 @@ func (c *Client) GetServers() map[int]string {
 
 func (c *Client) GetConfig(dataId, group string) (string, error) {
 	return c.callApi("diamond-server/config.co", map[string]string{
+		"tenant": c.NameSpace,
 		"dataId": dataId,
 		"group":  group,
 	}, "GET")
@@ -171,21 +175,27 @@ func (c *Client) GetConfig(dataId, group string) (string, error) {
 
 func (c *Client) GetAllConfigs(pageNo, pageSize int) (string, error) {
 	return c.callApi("diamond-server/basestone.do?method=getAllConfigByTenant", map[string]string{
-		"dataId": strconv.Itoa(pageNo),
-		"group":  strconv.Itoa(pageSize),
+		"pageNo":   strconv.Itoa(pageNo),
+		"pageSize": strconv.Itoa(pageSize),
 	}, "GET")
 }
 
 func (c *Client) Publish(dataId, group, content string) (string, error) {
+	bt, err := Utf8ToGbk([]byte(content))
+	if err != nil {
+		return "", err
+	}
+
 	return c.callApi("diamond-server/basestone.do?method=syncUpdateAll", map[string]string{
+		"tenant":  c.NameSpace,
 		"dataId":  dataId,
 		"group":   group,
-		"content": content,
+		"content": string(bt),
 	}, "POST")
 }
 
 func (c *Client) Subscribe(dataId, group, contentMd5 string) (string, error) {
-	probe := strings.Join([]string{dataId, group, contentMd5, c.NameSpace},"\x02")+"\x01"
+	probe := strings.Join([]string{dataId, group, contentMd5, c.NameSpace}, "\x02") + "\x01"
 	return c.callApi("diamond-server/config.co", map[string]string{
 		"Probe-Modify-Request": probe,
 	}, "POST")
@@ -193,6 +203,7 @@ func (c *Client) Subscribe(dataId, group, contentMd5 string) (string, error) {
 
 func (c *Client) Delete(dateId, group string) (string, error) {
 	return c.callApi("diamond-server/datum.do?method=deleteAllDatums", map[string]string{
+		"tenant": c.NameSpace,
 		"dataId": dateId,
 		"group":  group,
 	}, "POST")
