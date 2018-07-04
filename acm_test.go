@@ -22,7 +22,7 @@ func getClient() *Client {
 	return client
 }
 
-func RunWithSchema(t *testing.T, test func(client *Client, t *testing.T)) {
+func RunWithTest(t *testing.T, test func(client *Client, t *testing.T)) {
 	client := getClient()
 	defer client.Delete("test", "test")
 
@@ -45,7 +45,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClient_GetConfig(t *testing.T) {
-	RunWithSchema(t, func(client *Client, t *testing.T) {
+	RunWithTest(t, func(client *Client, t *testing.T) {
 		ret, err := client.GetConfig("test", "test")
 		if err != nil {
 			t.Error(err)
@@ -55,7 +55,7 @@ func TestClient_GetConfig(t *testing.T) {
 }
 
 func TestClient_Subscribe(t *testing.T) {
-	RunWithSchema(t, func(client *Client, t *testing.T) {
+	RunWithTest(t, func(client *Client, t *testing.T) {
 		_, err := client.Subscribe("test", "test","")
 		if err != nil {
 			t.Error(err)
