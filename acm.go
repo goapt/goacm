@@ -20,7 +20,6 @@ type Client struct {
 	EndPoint      string
 	NameSpace     string
 	TimeOut       int
-	LocalDataPath string
 	servers       map[int]string
 	HttpClient    *http.Client
 }
