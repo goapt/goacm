@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"fmt"
+	"time"
 )
 
 func getClient() *Client {
@@ -61,13 +62,11 @@ func TestClient_Subscribe(t *testing.T) {
 		t.Error(err)
 	}
 
+	time.Sleep(3 * time.Second)
 	_, err = client.GetConfig("test", "test")
 	if err != nil {
 		t.Error(err)
 	}
 
 	_, err = client.Subscribe("test", "test", "")
-	if err != nil {
-		t.Error(err)
-	}
 }
