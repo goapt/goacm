@@ -14,9 +14,19 @@ func GbkToUtf8(s []byte) ([]byte, error) {
 	return ioutil.ReadAll(reader)
 }
 
+func MustGbkToUtf8(s []byte) []byte {
+	tmp, _ := GbkToUtf8(s)
+	return tmp
+}
+
 func Utf8ToGbk(s []byte) ([]byte, error) {
 	reader := Utf8ToGbkReader(bytes.NewReader(s))
 	return ioutil.ReadAll(reader)
+}
+
+func MustUtf8ToGbk(s []byte) []byte {
+	tmp, _ := Utf8ToGbk(s)
+	return tmp
 }
 
 //return utf8

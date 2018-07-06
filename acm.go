@@ -12,16 +12,28 @@ import (
 	"crypto/hmac"
 	"strconv"
 	"net/url"
+	"sync"
+	"log"
+	"encoding/hex"
+	"crypto/md5"
 )
 
+type cacheConf struct {
+	dataId  string
+	group   string
+	content string
+	md5     string
+}
+
 type Client struct {
-	AccessKey     string
-	SecretKey     string
-	EndPoint      string
-	NameSpace     string
-	TimeOut       int
-	servers       map[int]string
-	HttpClient    *http.Client
+	AccessKey  string
+	SecretKey  string
+	EndPoint   string
+	NameSpace  string
+	TimeOut    int
+	servers    map[int]string
+	HttpClient *http.Client
+	cache      sync.Map
 }
 
 func NewClient(option func(c *Client)) (*Client, error) {
@@ -29,6 +41,7 @@ func NewClient(option func(c *Client)) (*Client, error) {
 		TimeOut:    30,
 		HttpClient: &http.Client{Timeout: 10 * time.Second},
 		servers:    make(map[int]string),
+		cache:      sync.Map{},
 	}
 	option(client)
 
@@ -161,12 +174,37 @@ func (c *Client) GetServers() map[int]string {
 	return c.servers
 }
 
+func (c *Client) getCacheKey(dataId, group string) string {
+	return strings.Join([]string{c.NameSpace, dataId, group}, "-")
+}
+
 func (c *Client) GetConfig(dataId, group string) (string, error) {
-	return c.callApi("diamond-server/config.co", map[string]string{
-		"tenant": c.NameSpace,
-		"dataId": dataId,
-		"group":  group,
-	}, "GET")
+	key := c.getCacheKey(dataId, group)
+	var err error
+	var ret string
+	v, ok := c.cache.Load(key)
+
+	if !ok {
+		ret, err = c.callApi("diamond-server/config.co", map[string]string{
+			"tenant": c.NameSpace,
+			"dataId": dataId,
+			"group":  group,
+		}, "GET")
+
+		if err == nil {
+			c.cache.Store(key, &cacheConf{
+				dataId:  dataId,
+				group:   group,
+				content: ret,
+				md5:     c.getMd5(ret),
+			})
+		}
+	} else {
+		tmp := v.(*cacheConf)
+		ret = tmp.content
+	}
+
+	return ret, err
 }
 
 func (c *Client) GetAllConfigs(pageNo, pageSize int) (string, error) {
@@ -174,6 +212,13 @@ func (c *Client) GetAllConfigs(pageNo, pageSize int) (string, error) {
 		"pageNo":   strconv.Itoa(pageNo),
 		"pageSize": strconv.Itoa(pageSize),
 	}, "GET")
+}
+
+func (c *Client) getMd5(ret string) string {
+	text := MustUtf8ToGbk([]byte(ret))
+	algorithm := md5.New()
+	algorithm.Write(text)
+	return hex.EncodeToString(algorithm.Sum(nil))
 }
 
 func (c *Client) Publish(dataId, group, content string) (string, error) {
@@ -191,10 +236,29 @@ func (c *Client) Publish(dataId, group, content string) (string, error) {
 }
 
 func (c *Client) Subscribe(dataId, group, contentMd5 string) (string, error) {
+	key := c.getCacheKey(dataId, group)
+	v, ok := c.cache.Load(key)
+	if ok && contentMd5 == "" {
+		tmp := v.(*cacheConf)
+		contentMd5 = tmp.md5
+	}
+
+	log.Printf(contentMd5)
+
 	probe := strings.Join([]string{dataId, group, contentMd5, c.NameSpace}, "\x02") + "\x01"
-	return c.callApi("diamond-server/config.co", map[string]string{
+	ret, err := c.callApi("diamond-server/config.co", map[string]string{
 		"Probe-Modify-Request": probe,
 	}, "POST")
+
+	if err != nil {
+		return "", err
+	}
+
+	if strings.TrimSpace(ret) == strings.Join([]string{dataId, group, c.NameSpace}, "%02")+"%01" {
+		c.cache.Delete(key)
+		return c.GetConfig(dataId, group)
+	}
+	return "", errors.New("no update")
 }
 
 func (c *Client) Delete(dateId, group string) (string, error) {
