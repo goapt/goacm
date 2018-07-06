@@ -25,16 +25,13 @@ type Client struct {
 	HttpClient    *http.Client
 }
 
-func NewClient(options ...func(c *Client)) (*Client, error) {
+func NewClient(option func(c *Client)) (*Client, error) {
 	client := &Client{
 		TimeOut:    30,
 		HttpClient: &http.Client{Timeout: 10 * time.Second},
 		servers:    make(map[int]string),
 	}
-
-	for _, option := range options {
-		option(client)
-	}
+	option(client)
 
 	err := client.initServer()
 	return client, err
