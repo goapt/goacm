@@ -165,7 +165,7 @@ func (c *Client) callApi(api string, params map[string]string, method string) (s
 	body := string(byt)
 
 	if resp.StatusCode != 200 {
-		return "", errors.New("response error:" + body)
+		return "", errors.New(fmt.Sprintf("response error:%s %s", body, params))
 	}
 	return body, nil
 }
