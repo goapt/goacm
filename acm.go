@@ -243,7 +243,7 @@ func (c *Client) Subscribe(dataId, group, contentMd5 string) (string, error) {
 		contentMd5 = tmp.md5
 	}
 
-	log.Printf(contentMd5)
+	log.Printf("local md5:%s",contentMd5)
 
 	probe := strings.Join([]string{dataId, group, contentMd5, c.NameSpace}, "\x02") + "\x01"
 	ret, err := c.callApi("diamond-server/config.co", map[string]string{
